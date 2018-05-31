@@ -42,7 +42,7 @@ const config = {
         ],
       },
       {
-        test: /\.html$/,
+	test: /\.(html|ttf|woff2|woff|eot)$/,
         loader: 'file-loader?name=[name].[ext]',
       },
     ],
