@@ -2,3 +2,7 @@ node_modules/
 .DS_Store
 .idea/
 build
+dist
+.env
+package-lock.json
+yarn.lock

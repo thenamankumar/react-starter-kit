@@ -1,19 +1,23 @@
 const path = require('path');
+const HtmlWebPackPlugin = require('html-webpack-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CompressionPlugin = require('compression-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
 
-const BUILD_DIR = path.resolve(__dirname, 'build');
 const APP_DIR = path.resolve(__dirname, 'app');
-const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const BUILD_DIR = path.resolve(__dirname, 'dist');
+const env = process.env.NODE_ENV || 'development';
 
-const config = {
-  entry: `${APP_DIR}/index.jsx`,
+module.exports = {
+  entry: ['babel-polyfill', `${APP_DIR}/index.jsx`],
   output: {
     path: BUILD_DIR,
     filename: 'bundle.js',
   },
-  mode: 'development',
-  devtool: 'source-map',
+  mode: env,
+  devtool: env === 'development' ? 'source-map' : null,
   module: {
     rules: [
       {
@@ -25,47 +29,69 @@ const config = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        loader: 'babel-loader',
+        use: {
+          loader: 'babel-loader',
+        },
       },
       {
-        test: /\.s?css$/,
-        loader: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: [{ loader: 'css-loader' }, { loader: 'sass-loader' }],
-        }),
-      },
-      {
-        test: /\.(jpe?g|png|gif|svg)$/i,
-        loaders: [
-          'file-loader?hash=sha512&digest=hex&name=[hash].[ext]',
-          'image-webpack-loader?bypassOnDebug&optimizationLevel=7&interlaced=false',
+        test: /\.html$/,
+        use: [
+          {
+            loader: 'html-loader',
+            options: { minimize: true },
+          },
         ],
       },
       {
-	test: /\.(html|ttf|woff2|woff|eot)$/,
-        loader: 'file-loader?name=[name].[ext]',
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader'],
       },
+      {
+        test: /\.scss$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
+      },
+      {
+        test: /\.(jpe?g|png|gif|svg)$/i,
+        use: [
+          {
+            loader: 'image-webpack-loader',
+            options: {
+              bypassOnDebug: true,
+            },
+          },
+          'url-loader?limit=10000',
+        ],
+      },
+      { test: /\.(woff|woff2|eot|ttf)$/, loader: 'url-loader?limit=100000' },
     ],
   },
-  plugins: [
-    new ExtractTextPlugin('bundle.css'),
-    new CopyWebpackPlugin([
-      {
-        from: `${PUBLIC_DIR}/**/*`,
-        to: BUILD_DIR,
-      },
-    ]),
-  ],
-  resolve: {
-    extensions: ['.js', '.jsx'],
+  performance: {
+    hints: process.env.NODE_ENV === 'production' ? 'warning' : false,
   },
+  plugins: [
+    new Dotenv(),
+    new CleanWebpackPlugin([BUILD_DIR]),
+    new CopyWebpackPlugin([{ from: 'public', to: './public' }]),
+    new HtmlWebPackPlugin({
+      template: `${APP_DIR}/index.html`,
+      filename: './index.html',
+    }),
+    new MiniCssExtractPlugin({
+      filename: 'bundle.css',
+    }),
+    new CompressionPlugin({
+      algorithm: 'gzip',
+      test: /\.jsx?$|\.s?css$/,
+      minRatio: 0.8,
+    }),
+  ],
   devServer: {
     contentBase: BUILD_DIR,
-    watchContentBase: true,
-    historyApiFallback: true,
+    compress: true,
     port: 3000,
-    hot: true,
+    historyApiFallback: true,
+  },
+  resolve: {
+    extensions: ['.js', '.jsx', '.json'],
   },
 };
-
-module.exports = config;
